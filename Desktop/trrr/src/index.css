@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #EBE8DD;
+    color: #111827;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-editorial {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+}
+
+/* SHINE Editorial Light Card & Utility Tokens */
+.shine-card {
+  background: #F8F6F0;
+  border: 1px solid #DFDBCF;
+  border-radius: 1.5rem;
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shine-card:hover {
+  border-color: #C2BBB0;
+  box-shadow: 0 20px 48px -15px rgba(0, 0, 0, 0.08);
+}
+
+.shine-card-white {
+  background: #FFFFFF;
+  border: 1px solid #E5E0D2;
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 25px -10px rgba(0, 0, 0, 0.03);
+}
+
+/* SHINE Canary Lemon Button */
+.shine-btn-lemon {
+  background-color: #EAF852;
+  color: #111827;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+
+.shine-btn-lemon:hover {
+  background-color: #E2F23A;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -5px rgba(234, 248, 82, 0.5);
+}
+
+/* Custom Scrollbar for Light Theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #EBE8DD;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C9C4B5;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A8A291;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
