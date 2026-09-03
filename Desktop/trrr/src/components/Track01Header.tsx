@@ -30,7 +30,7 @@ export const Track01Header: React.FC<Track01HeaderProps> = ({ onTabChange }) => 
 
           <div className="flex items-center gap-2 text-xs font-bold text-[#111827] bg-white px-3 py-1 rounded-full border border-[#DFDBCF]">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Razorpay Test-Mode APIs Active •</span>
+            <span>RapierPay Test-Mode APIs Active •</span>
           </div>
         </div>
 
@@ -47,7 +47,7 @@ export const Track01Header: React.FC<Track01HeaderProps> = ({ onTabChange }) => 
             </h1>
 
             <p className="text-sm text-gray-700 font-sans max-w-lg font-medium leading-relaxed">
-              Build autonomous AI buyer & seller agents that grow merchant revenue using Razorpay / RapierPay test-mode APIs, ACP machine-readable catalog schemas, and AP2 bounded spend mandates.
+              Build autonomous AI buyer & seller agents that grow merchant revenue using RapierPay test-mode APIs, ACP machine-readable catalog schemas, and AP2 bounded spend mandates.
             </p>
 
             {/* Action Buttons with Live Interactivity */}
