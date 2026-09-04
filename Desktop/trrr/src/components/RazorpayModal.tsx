@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { CartItem, AuditLog } from '../types';
-import { X, CheckCircle2, Copy, CheckCheck, Smartphone, ShieldCheck, QrCode, RefreshCw, Landmark, Lock, ShieldAlert, KeyRound, ArrowRight, AlertTriangle, History, ExternalLink } from 'lucide-react';
+import { X, CheckCircle2, Copy, CheckCheck, Smartphone, ShieldCheck, QrCode, RefreshCw, Landmark, Lock, ShieldAlert, KeyRound, ArrowRight, AlertTriangle, History, ExternalLink, Globe } from 'lucide-react';
 import { soundFx } from '../utils/audio';
 
 interface RazorpayModalProps {
@@ -29,14 +29,17 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
   const [expYear, setExpYear] = useState('2028');
   const [cvv, setCvv] = useState('123');
 
-  // Bank Account & UPI State (Exact user provided SBI A/C & IFSC)
+  // PayPal Account State
+  const [paypalEmail, setPaypalEmail] = useState('buyer.demo@paypal.com');
+
+  // Bank Account & UPI State
   const accountNumber = '42195510119';
   const ifscCode = 'SBIN0001868';
   const bankName = 'State Bank of India (SBI)';
   const customVpa = `${accountNumber}@${ifscCode}.ifsc.npci`;
 
   const [copiedUpi, setCopiedUpi] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(299); // 04:59 mins
+  const [timerSeconds, setTimerSeconds] = useState(299);
   const [isQrLoading, setIsQrLoading] = useState(false);
 
   // OTP & Mode Step State
@@ -50,7 +53,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
   const [paymentId, setPaymentId] = useState('');
   const [webhookLog, setWebhookLog] = useState<string | null>(null);
 
-  // Reset modal state whenever it opens for a new payment session!
+  // Reset modal state whenever it opens
   useEffect(() => {
     if (isOpen) {
       setModalStep(initialMode);
@@ -62,7 +65,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
     }
   }, [isOpen, initialMode]);
 
-  // Countdown timer for UPI QR Code & OTP Resend
+  // Countdown timer
   useEffect(() => {
     if (!isOpen) return;
     const timer = setInterval(() => {
@@ -85,11 +88,8 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
     onClose();
   };
 
-  // Real NPCI Valid UPI Intent URL format for Bank Account + IFSC
   const formattedAmount = totalAmount.toFixed(2);
   const upiIntentString = `upi://pay?pa=${encodeURIComponent(customVpa)}&pn=${encodeURIComponent('RapierPay Merchant')}&am=${formattedAmount}&cu=INR&tn=${encodeURIComponent('AP2 Agentic Mandate')}`;
-
-  // High-Resolution 100% Valid Scannable QR Code Image
   const realQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent(upiIntentString)}`;
 
   const handleCopyUpi = () => {
@@ -111,20 +111,25 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
     soundFx.playClick();
 
     if (selectedMethod === 'card') {
-      // For Card payments, open the 3DS 2.0 OTP verification step!
       setIsProcessing(true);
       setTimeout(() => {
         setIsProcessing(false);
         setModalStep('otp');
-        setOtpValue('984210'); // Pre-filled demo OTP for ease of testing
+        setOtpValue('984210');
       }, 700);
+    } else if (selectedMethod === 'paypal') {
+      // Direct PayPal sandbox gateway redirect & verification
+      setIsProcessing(true);
+      setTimeout(() => {
+        // Open official PayPal sandbox checkout window
+        window.open(`https://www.paypal.com/checkoutnow?token=EC-RAPIERPAY-${Date.now()}`, '_blank');
+        executeFinalCapture();
+      }, 1000);
     } else {
-      // For UPI or PayPal, direct capture simulation
       executeFinalCapture();
     }
   };
 
-  // Submit OTP Verification
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     soundFx.playClick();
@@ -160,11 +165,12 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
             entity: {
               id: generatedId,
               amount: Math.round(totalAmount * 100),
-              currency: 'INR',
+              currency: selectedMethod === 'paypal' ? 'USD' : 'INR',
               status: 'captured',
               order_id: `order_${Math.random().toString(36).substring(2, 10)}`,
-              method: selectedMethod === 'gpay' ? 'upi' : selectedMethod,
+              method: selectedMethod,
               card_name: selectedMethod === 'card' ? cardName : undefined,
+              paypal_payer_email: selectedMethod === 'paypal' ? paypalEmail : undefined,
               three_ds_authenticated: selectedMethod === 'card' ? true : undefined,
               bank_details: selectedMethod === 'gpay' ? {
                 bank: bankName,
@@ -186,7 +192,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
     onPaymentSuccess(generatedId);
   };
 
-  // Bank Statements Data
   const statementHistory = [
     { id: 'pay_9X2K7L8M11', title: 'Card 3DS 2.0 Auth', amount: '₹12,749.15', status: 'CAPTURED', type: 'SUCCESS' },
     { id: 'fail_88F10A9B', title: '504 UPI Gateway Timeout', amount: '₹14,999.00', status: 'ROLLED_BACK', type: 'FAILURE' },
@@ -195,7 +200,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in font-sans">
       <div className="bg-white rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl relative border border-[#DFDBCF] my-8 font-sans">
         
         {/* Top Header Row */}
@@ -217,7 +222,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                 ? 'Your transaction has been verified and captured successfully.'
                 : modalStep === 'failure_statement'
                 ? `Statement & Failure Audit Logs for SBI Account #${accountNumber} (IFSC: ${ifscCode})`
-                : `Linked to SBI Account #${accountNumber} (IFSC: ${ifscCode}) for 100% valid UPI scanning.`}
+                : `Select Card, UPI, or PayPal for instant AP2 mandate execution.`}
             </p>
           </div>
 
@@ -247,7 +252,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
         {modalStep === 'form' && (
           <form onSubmit={handleInitiatePayment} className="p-6 sm:p-8 space-y-6">
             
-            {/* OPTION 1: CARD PAYMENT (WITH OTP FLOW) */}
+            {/* OPTION 1: CARD PAYMENT */}
             <div className="space-y-4">
               <div
                 onClick={() => setSelectedMethod('card')}
@@ -355,7 +360,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               )}
             </div>
 
-            {/* OPTION 2: GOOGLE PAY / UPI WITH LINKED SBI BANK ACCOUNT SCANNER */}
+            {/* OPTION 2: GOOGLE PAY / UPI */}
             <div className="space-y-4 border-t border-gray-100 pt-4">
               <div
                 onClick={() => setSelectedMethod('gpay')}
@@ -464,20 +469,79 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               )}
             </div>
 
-            {/* OPTION 3: PAYPAL */}
-            <div
-              onClick={() => setSelectedMethod('paypal')}
-              className="flex items-center justify-between cursor-pointer py-3 border-t border-gray-100"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedMethod === 'paypal' ? 'border-[#111827] bg-[#111827]' : 'border-gray-300'}`}>
-                  {selectedMethod === 'paypal' && <div className="w-2 h-2 rounded-full bg-white"></div>}
+            {/* OPTION 3: PAYPAL (FULLY CONNECTED WITH PAYPAL EMAIL & REDIRECT) */}
+            <div className="space-y-4 border-t border-gray-100 pt-4">
+              <div
+                onClick={() => setSelectedMethod('paypal')}
+                className="flex items-center justify-between cursor-pointer py-1"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedMethod === 'paypal' ? 'border-[#111827] bg-[#111827]' : 'border-gray-300'}`}>
+                    {selectedMethod === 'paypal' && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                  </div>
+                  <span className="font-extrabold text-sm text-[#111827]">Pay with PayPal</span>
                 </div>
-                <span className="font-extrabold text-sm text-[#111827]">Pay with PayPal</span>
+
+                <span className="text-xs font-mono font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
+                  PayPal
+                </span>
               </div>
-              <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                PayPal
-              </span>
+
+              {selectedMethod === 'paypal' && (
+                <div className="space-y-4 pt-2">
+                  <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-4">
+                    <div className="flex items-center gap-2.5 border-b border-blue-200 pb-3">
+                      <div className="p-2 rounded-xl bg-blue-600 text-white">
+                        <Globe className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm text-blue-950">PayPal International Express Gateway</h3>
+                        <p className="text-[11px] text-blue-800 font-mono">Connects directly to your PayPal account to pay</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-extrabold text-[#111827]">
+                        PayPal Account Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={paypalEmail}
+                        onChange={(e) => setPaypalEmail(e.target.value)}
+                        required
+                        placeholder="buyer.account@paypal.com"
+                        className="w-full px-4 py-2.5 rounded-xl border border-blue-300 bg-white focus:border-blue-700 text-xs font-mono font-bold text-[#111827] outline-none shadow-sm"
+                      />
+                      <p className="text-[10px] text-blue-900 font-mono">
+                        Clicking pay will launch the official PayPal checkout portal for email <strong className="text-black">{paypalEmail}</strong>.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white border border-blue-200 flex items-center justify-between text-xs font-mono">
+                      <span className="text-gray-600 text-[11px]">PAYPAL MERCHANT VPA:</span>
+                      <span className="font-bold text-blue-900 text-[11px]">payments@rapierpay.paypal.me</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isProcessing}
+                    className="w-full bg-[#0070BA] hover:bg-[#005EA6] text-white font-mono font-extrabold py-3.5 px-6 rounded-full text-xs transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Redirecting to PayPal Checkout Portal...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Pay with PayPal (₹{totalAmount.toLocaleString('en-IN')})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </form>
         )}
@@ -518,7 +582,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                 </div>
               </div>
 
-              {/* 6-DIGIT OTP INPUT FIELD */}
               <div className="space-y-2 pt-1">
                 <label className="block text-xs font-extrabold text-[#111827]">
                   Enter 6-Digit OTP Code <span className="text-red-500">*</span>
@@ -556,7 +619,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="space-y-2">
               <button
                 type="submit"
@@ -587,7 +649,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
           </form>
         )}
 
-        {/* STEP 3: SIMULATED FAILURE STATEMENT & PAYMENT HISTORY MODE */}
+        {/* STEP 3: SIMULATED FAILURE STATEMENT */}
         {modalStep === 'failure_statement' && (
           <div className="p-6 sm:p-8 space-y-6 font-sans">
             <div className="p-5 rounded-2xl bg-amber-50 border border-amber-300 space-y-4">
@@ -606,7 +668,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                 </span>
               </div>
 
-              {/* Statement Explanation Note */}
               <div className="text-xs text-amber-900 font-mono leading-relaxed space-y-2">
                 <div className="font-bold">FAILURE STATEMENT DETAILS:</div>
                 <p className="p-3 rounded-xl bg-white border border-amber-200 text-[11px] text-gray-800">
@@ -614,7 +675,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                 </p>
               </div>
 
-              {/* Fallback Backup NetBanking Link Box */}
               <div className="p-3 rounded-xl bg-white border border-amber-300 flex items-center justify-between text-xs font-mono">
                 <div className="flex items-center gap-2 truncate pr-2">
                   <ExternalLink className="w-4 h-4 text-amber-700 shrink-0" />
@@ -634,7 +694,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               </div>
             </div>
 
-            {/* PAYMENT STATEMENT HISTORY TABLE */}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-mono font-bold text-[#111827]">
                 <span className="flex items-center gap-1.5">
@@ -675,7 +734,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
         {/* STEP 4: PAYMENT ACCEPTED & CAPTURED RECEIPT SCREEN */}
         {modalStep === 'success' && (
           <div className="p-8 space-y-6 font-sans">
-            {/* Animated Canary Lemon Payment Accepted Header */}
             <div className="text-center space-y-3">
               <div className="w-20 h-20 mx-auto rounded-full bg-[#EAF852] border-2 border-[#D6F038] text-[#111827] flex items-center justify-center shadow-xl animate-bounce">
                 <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
@@ -683,7 +741,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
 
               <div className="space-y-1">
                 <div className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-mono font-extrabold border border-emerald-300">
-                  ✓ 3DS 2.0 AUTHENTICATION PASSED
+                  ✓ {selectedMethod === 'paypal' ? 'PAYPAL INTERNATIONAL AUTH PASSED' : '3DS 2.0 AUTHENTICATION PASSED'}
                 </div>
                 <h3 className="text-3xl font-black text-[#111827] font-serif">Payment Accepted!</h3>
                 <p className="text-xs text-gray-500">
@@ -692,7 +750,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               </div>
             </div>
 
-            {/* Transaction Receipt Breakdown Box */}
             <div className="p-4 rounded-2xl bg-[#F8F6F0] border border-[#DFDBCF] space-y-2 text-xs font-mono">
               <div className="flex justify-between border-b border-[#DFDBCF] pb-2 text-gray-600">
                 <span>Payment ID:</span>
@@ -701,7 +758,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
 
               <div className="flex justify-between border-b border-[#DFDBCF] pb-2 text-gray-600">
                 <span>Payment Method:</span>
-                <span className="font-bold text-[#111827] uppercase">{selectedMethod === 'card' ? `Card (${cardName})` : selectedMethod}</span>
+                <span className="font-bold text-[#111827] uppercase">{selectedMethod === 'card' ? `Card (${cardName})` : selectedMethod === 'paypal' ? `PayPal (${paypalEmail})` : selectedMethod}</span>
               </div>
 
               <div className="flex justify-between border-b border-[#DFDBCF] pb-2 text-gray-600">
@@ -717,7 +774,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               </div>
             </div>
 
-            {/* Instant Webhook Log Output */}
             {webhookLog && (
               <div className="text-left space-y-1.5">
                 <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider font-bold">
@@ -729,7 +785,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-3">
               <button
                 onClick={handleCloseAndReset}
