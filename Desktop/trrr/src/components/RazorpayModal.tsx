@@ -43,7 +43,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
   const [isQrLoading, setIsQrLoading] = useState(false);
 
   // OTP & Mode Step State
-  const [modalStep, setModalStep] = useState<'form' | 'otp' | 'success' | 'failure_statement'>(initialMode);
+  const [modalStep, setModalStep] = useState<'form' | 'otp' | 'paypal_express' | 'success' | 'failure_statement'>(initialMode);
   const [otpValue, setOtpValue] = useState('');
   const [otpError, setOtpError] = useState('');
   const demoOtp = '984210';
@@ -118,16 +118,23 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
         setOtpValue('984210');
       }, 700);
     } else if (selectedMethod === 'paypal') {
-      // Direct PayPal sandbox gateway redirect & verification
+      // Launch PayPal Express Checkout screen
       setIsProcessing(true);
       setTimeout(() => {
-        // Open official PayPal sandbox checkout window
-        window.open(`https://www.paypal.com/checkoutnow?token=EC-RAPIERPAY-${Date.now()}`, '_blank');
-        executeFinalCapture();
-      }, 1000);
+        setIsProcessing(false);
+        setModalStep('paypal_express');
+      }, 600);
     } else {
       executeFinalCapture();
     }
+  };
+
+  const handleConfirmPayPalExpress = () => {
+    soundFx.playClick();
+    setIsProcessing(true);
+    setTimeout(() => {
+      executeFinalCapture();
+    }, 1000);
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
@@ -209,6 +216,8 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
             <h2 className="text-3xl font-black text-[#111827] font-serif tracking-tight">
               {modalStep === 'otp'
                 ? '3D Secure OTP Authentication'
+                : modalStep === 'paypal_express'
+                ? 'PayPal Express Checkout'
                 : modalStep === 'success'
                 ? 'Payment Accepted'
                 : modalStep === 'failure_statement'
@@ -218,6 +227,8 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
             <p className="text-xs text-gray-500 font-medium">
               {modalStep === 'otp'
                 ? 'Enter the 6-digit OTP sent by your bank to authorize payment.'
+                : modalStep === 'paypal_express'
+                ? 'Log in and authorize payment using your PayPal Balance or linked card.'
                 : modalStep === 'success'
                 ? 'Your transaction has been verified and captured successfully.'
                 : modalStep === 'failure_statement'
@@ -469,7 +480,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               )}
             </div>
 
-            {/* OPTION 3: PAYPAL (FULLY CONNECTED WITH PAYPAL EMAIL & REDIRECT) */}
+            {/* OPTION 3: PAYPAL */}
             <div className="space-y-4 border-t border-gray-100 pt-4">
               <div
                 onClick={() => setSelectedMethod('paypal')}
@@ -513,7 +524,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                         className="w-full px-4 py-2.5 rounded-xl border border-blue-300 bg-white focus:border-blue-700 text-xs font-mono font-bold text-[#111827] outline-none shadow-sm"
                       />
                       <p className="text-[10px] text-blue-900 font-mono">
-                        Clicking pay will launch the official PayPal checkout portal for email <strong className="text-black">{paypalEmail}</strong>.
+                        Clicking pay will launch PayPal Express Authentication for <strong className="text-black">{paypalEmail}</strong>.
                       </p>
                     </div>
 
@@ -531,11 +542,11 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                     {isProcessing ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Redirecting to PayPal Checkout Portal...</span>
+                        <span>Connecting to PayPal Express Portal...</span>
                       </>
                     ) : (
                       <>
-                        <ExternalLink className="w-4 h-4" />
+                        <CheckCircle2 className="w-4 h-4" />
                         <span>Pay with PayPal (₹{totalAmount.toLocaleString('en-IN')})</span>
                       </>
                     )}
@@ -546,7 +557,67 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
           </form>
         )}
 
-        {/* STEP 2: 3D SECURE 2.0 OTP VERIFICATION SCREEN */}
+        {/* STEP 2: PAYPAL EXPRESS AUTHENTICATION SCREEN */}
+        {modalStep === 'paypal_express' && (
+          <div className="p-6 sm:p-8 space-y-6 font-sans">
+            <div className="p-6 rounded-3xl bg-[#003087] text-white space-y-5 shadow-xl border border-[#00246B]">
+              <div className="flex items-center justify-between border-b border-blue-400/40 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-2xl font-sans tracking-tight text-white">PayPal</span>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-500/40 text-blue-100 font-bold">EXPRESS</span>
+                </div>
+                <span className="text-xs font-mono text-blue-200">{paypalEmail}</span>
+              </div>
+
+              <div className="space-y-2 text-xs font-mono">
+                <span className="text-blue-200 text-[10px] block">PAYMENT FUNDING SOURCE:</span>
+                <div className="p-3 rounded-2xl bg-white/10 border border-blue-400/30 flex items-center justify-between text-white">
+                  <div>
+                    <div className="font-bold">PayPal Balance / Preferred Card</div>
+                    <div className="text-[10px] text-blue-200">Visa ending in •••• 4022</div>
+                  </div>
+                  <span className="font-black text-emerald-300">VERIFIED</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-2 font-mono text-xs border-t border-blue-400/40">
+                <span className="text-blue-200">TOTAL CHARGED:</span>
+                <span className="text-2xl font-black text-white font-serif">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleConfirmPayPalExpress}
+                disabled={isProcessing}
+                className="w-full bg-[#0070BA] hover:bg-[#005EA6] text-white font-mono font-black py-4 px-6 rounded-full text-xs transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Completing PayPal Mandate Execution...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Complete Purchase on PayPal (₹{totalAmount.toLocaleString('en-IN')})</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalStep('form')}
+                className="w-full py-2.5 text-xs text-gray-600 font-bold hover:underline text-center block"
+              >
+                ← Back to Payment Methods
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: 3D SECURE 2.0 OTP VERIFICATION SCREEN */}
         {modalStep === 'otp' && (
           <form onSubmit={handleVerifyOtp} className="p-6 sm:p-8 space-y-6 font-sans">
             <div className="p-5 rounded-2xl bg-[#F8F6F0] border border-[#DFDBCF] space-y-4">
@@ -649,7 +720,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
           </form>
         )}
 
-        {/* STEP 3: SIMULATED FAILURE STATEMENT */}
+        {/* STEP 4: SIMULATED FAILURE STATEMENT */}
         {modalStep === 'failure_statement' && (
           <div className="p-6 sm:p-8 space-y-6 font-sans">
             <div className="p-5 rounded-2xl bg-amber-50 border border-amber-300 space-y-4">
@@ -731,7 +802,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
           </div>
         )}
 
-        {/* STEP 4: PAYMENT ACCEPTED & CAPTURED RECEIPT SCREEN */}
+        {/* STEP 5: PAYMENT ACCEPTED & CAPTURED RECEIPT SCREEN */}
         {modalStep === 'success' && (
           <div className="p-8 space-y-6 font-sans">
             <div className="text-center space-y-3">
