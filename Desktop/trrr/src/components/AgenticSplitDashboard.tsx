@@ -14,7 +14,7 @@ interface AgenticSplitDashboardProps {
 export const AgenticSplitDashboard: React.FC<AgenticSplitDashboardProps> = ({
   onOpenRazorpayModal,
 }) => {
-  // Agent Chat Messages State (Concise & Point-to-Point)
+  // Agent Chat Messages State
   const [messages, setMessages] = useState<AgentChatMessage[]>([
     {
       id: 'msg-init',
@@ -60,6 +60,20 @@ export const AgenticSplitDashboard: React.FC<AgenticSplitDashboardProps> = ({
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  const handleStepClick = (phase: DecisionPhase) => {
+    soundFx.playClick();
+    setActivePhase(phase);
+
+    // If clicking a specific step, generate an explanatory step trace message if no message exists
+    if (phase === 'PROPOSE') {
+      handleSendMessage('Propose optimal ACP discount bundle & margin protection');
+    } else if (phase === 'GATE_CHECK') {
+      handleSendMessage('Run AP2 Gate Check for ₹50,000 spend cap policy');
+    } else if (phase === 'EXECUTE') {
+      handleSendMessage('Execute AP2 Mandate Token and prepare gateway checkout');
+    }
+  };
 
   const handleSendMessage = (textToSend?: string, forcedScenario?: 'over_budget') => {
     const query = textToSend || inputQuery;
@@ -149,7 +163,7 @@ export const AgenticSplitDashboard: React.FC<AgenticSplitDashboardProps> = ({
       setAuditLogs((prev) => [auditEntry, ...prev]);
       setActiveFailureBanner(`SCENARIO EXECUTED: Limit Blocked (₹75,000 > ₹${policy.maxTransactionLimit.toLocaleString('en-IN')})`);
 
-    } else if (q.includes('license') || q.includes('neural') || q.includes('annual') || q.includes('buy')) {
+    } else if (q.includes('propose') || q.includes('discount') || q.includes('margin')) {
       const prod = mockProducts[0];
       const existing = updatedCart.find((item) => item.product.id === prod.id);
       if (existing) {
@@ -163,7 +177,72 @@ export const AgenticSplitDashboard: React.FC<AgenticSplitDashboardProps> = ({
       proposedTotalAmt = total;
       actionReq = 'checkout';
 
-      responseText = `Configured: **${prod.name}**. Applied **15% ACP Discount** (Saved ₹2,250). Total: **₹${total.toLocaleString('en-IN')}**. Status: PASSED.`;
+      responseText = `[02. PROPOSE PHASE]: Formulated **${prod.name}** with **15% ACP Margin-Protected Discount**. Proposed Total: **₹${total.toLocaleString('en-IN')}**.`;
+
+      reasoning = {
+        observe: `• Product catalog queried for SKU ${prod.sku}.`,
+        propose: `• Formulated 15% discount. Margin preserved at +65%.`,
+        gateCheck: {
+          passed: true,
+          rule: `CAP_CHECK (₹${total.toLocaleString('en-IN')} <= ₹${policy.maxTransactionLimit.toLocaleString('en-IN')})`,
+          spendCap: policy.maxTransactionLimit,
+          proposedAmount: total
+        },
+        execute: `• AP2 Mandate Token ready for handoff.`,
+        auditHash: auditHashStr
+      };
+
+      payload = {
+        phase: 'PROPOSE',
+        sku: prod.sku,
+        discount: 15,
+        total: total,
+        idempotency_key: idempKey
+      };
+
+      soundFx.playChime();
+    } else if (q.includes('gate') || q.includes('cap') || q.includes('limit')) {
+      const total = cart.length > 0 ? calculateCartTotal() : mockProducts[0].price * 0.85;
+      const passed = total <= policy.maxTransactionLimit;
+
+      responseText = `[03. GATE CHECK PHASE]: Evaluated order amount **₹${total.toLocaleString('en-IN')}** against single transaction cap **₹${policy.maxTransactionLimit.toLocaleString('en-IN')}**. Result: **${passed ? 'PASSED ✅' : 'BLOCKED ⚠️'}**.`;
+
+      reasoning = {
+        observe: '• Evaluated policy gate rules.',
+        propose: `• Verified order amount ₹${total.toLocaleString('en-IN')}.`,
+        gateCheck: {
+          passed: passed,
+          rule: `CAP_CHECK (₹${total.toLocaleString('en-IN')} <= ₹${policy.maxTransactionLimit.toLocaleString('en-IN')})`,
+          spendCap: policy.maxTransactionLimit,
+          proposedAmount: total
+        },
+        execute: passed ? '• Gate cleared. Ready for execution.' : '• Action halted.',
+        auditHash: auditHashStr
+      };
+
+      payload = {
+        phase: 'GATE_CHECK',
+        spend_cap: policy.maxTransactionLimit,
+        proposed_total: total,
+        passed: passed
+      };
+
+      soundFx.playChime();
+    } else if (q.includes('license') || q.includes('neural') || q.includes('annual') || q.includes('buy') || q.includes('execute')) {
+      const prod = mockProducts[0];
+      const existing = updatedCart.find((item) => item.product.id === prod.id);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        updatedCart.push({ product: prod, quantity: 1, appliedDiscount: 15 });
+      }
+      setCart(updatedCart);
+
+      const total = updatedCart.reduce((sum, item) => sum + (item.product.price * (1 - item.appliedDiscount / 100)) * item.quantity, 0);
+      proposedTotalAmt = total;
+      actionReq = 'checkout';
+
+      responseText = `[04. EXECUTE PHASE]: AP2 Mandate Token generated for **${prod.name}**. Total: **₹${total.toLocaleString('en-IN')}**. Status: PASSED. Click button to launch RapierPay Gateway.`;
 
       reasoning = {
         observe: `• Verified SKU ${prod.sku} stock: ${prod.stockCount}.`,
@@ -221,7 +300,7 @@ export const AgenticSplitDashboard: React.FC<AgenticSplitDashboardProps> = ({
 
       soundFx.playChime();
     } else {
-      responseText = `Query evaluated: "${userQuery}". Verified 4 ACP SKUs. Select a scenario button to trigger transactions.`;
+      responseText = `Query evaluated: "${userQuery}". Verified 4 ACP SKUs. Click 02. PROPOSE, 03. GATE CHECK, or 04. EXECUTE to test decision phases.`;
       reasoning = {
         observe: `• Intent analyzed: "${userQuery}".`,
         propose: '• Recommended ACP SKUs ready.',
@@ -295,20 +374,51 @@ export const AgenticSplitDashboard: React.FC<AgenticSplitDashboardProps> = ({
             </span>
           </div>
 
-          {/* Stepper */}
+          {/* Interactive Stepper Buttons for OBSERVE, PROPOSE, GATE CHECK, EXECUTE */}
           <div className="grid grid-cols-4 gap-2 font-mono text-[10px] text-center">
-            <div className={`py-2 rounded-xl border transition-all ${activePhase === 'OBSERVE' ? 'bg-[#EAF852] text-[#111827] font-black border-[#D6F038]' : 'bg-white text-gray-600 border-[#DFDBCF]'}`}>
+            <button
+              onClick={() => handleStepClick('OBSERVE')}
+              className={`py-2 px-1 rounded-xl border transition-all font-bold cursor-pointer hover:scale-105 active:scale-95 ${
+                activePhase === 'OBSERVE'
+                  ? 'bg-[#EAF852] text-[#111827] font-black border-[#D6F038] shadow-sm'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border-[#DFDBCF]'
+              }`}
+            >
               01. OBSERVE
-            </div>
-            <div className={`py-2 rounded-xl border transition-all ${activePhase === 'PROPOSE' ? 'bg-[#EAF852] text-[#111827] font-black border-[#D6F038]' : 'bg-white text-gray-600 border-[#DFDBCF]'}`}>
+            </button>
+
+            <button
+              onClick={() => handleStepClick('PROPOSE')}
+              className={`py-2 px-1 rounded-xl border transition-all font-bold cursor-pointer hover:scale-105 active:scale-95 ${
+                activePhase === 'PROPOSE'
+                  ? 'bg-[#EAF852] text-[#111827] font-black border-[#D6F038] shadow-sm'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border-[#DFDBCF]'
+              }`}
+            >
               02. PROPOSE
-            </div>
-            <div className={`py-2 rounded-xl border transition-all ${activePhase === 'GATE_CHECK' ? 'bg-amber-300 text-[#111827] font-black border-amber-400' : 'bg-white text-gray-600 border-[#DFDBCF]'}`}>
+            </button>
+
+            <button
+              onClick={() => handleStepClick('GATE_CHECK')}
+              className={`py-2 px-1 rounded-xl border transition-all font-bold cursor-pointer hover:scale-105 active:scale-95 ${
+                activePhase === 'GATE_CHECK'
+                  ? 'bg-amber-300 text-[#111827] font-black border-amber-400 shadow-sm'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border-[#DFDBCF]'
+              }`}
+            >
               03. GATE CHECK
-            </div>
-            <div className={`py-2 rounded-xl border transition-all ${activePhase === 'EXECUTE' ? 'bg-[#EAF852] text-[#111827] font-black border-[#D6F038]' : 'bg-white text-gray-600 border-[#DFDBCF]'}`}>
+            </button>
+
+            <button
+              onClick={() => handleStepClick('EXECUTE')}
+              className={`py-2 px-1 rounded-xl border transition-all font-bold cursor-pointer hover:scale-105 active:scale-95 ${
+                activePhase === 'EXECUTE'
+                  ? 'bg-[#EAF852] text-[#111827] font-black border-[#D6F038] shadow-sm'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border-[#DFDBCF]'
+              }`}
+            >
               04. EXECUTE
-            </div>
+            </button>
           </div>
         </div>
 
@@ -338,10 +448,10 @@ export const AgenticSplitDashboard: React.FC<AgenticSplitDashboardProps> = ({
                       </span>
                     </div>
 
-                    <div className="text-gray-700">{msg.reasoningChain.observe}</div>
-                    <div className="text-gray-700">{msg.reasoningChain.propose}</div>
-                    <div className="text-gray-800 font-bold">• GATE: {msg.reasoningChain.gateCheck.rule}</div>
-                    <div className="text-black font-bold">{msg.reasoningChain.execute}</div>
+                    <div className={activePhase === 'OBSERVE' ? 'font-bold text-[#111827]' : 'text-gray-700'}>{msg.reasoningChain.observe}</div>
+                    <div className={activePhase === 'PROPOSE' ? 'font-bold text-[#111827]' : 'text-gray-700'}>{msg.reasoningChain.propose}</div>
+                    <div className={activePhase === 'GATE_CHECK' ? 'font-black text-amber-900 bg-amber-100 p-1 rounded border border-amber-300' : 'text-gray-800 font-bold'}>• GATE: {msg.reasoningChain.gateCheck.rule}</div>
+                    <div className={activePhase === 'EXECUTE' ? 'font-black text-black bg-[#EAF852] p-1 rounded border border-[#D6F038]' : 'text-black font-bold'}>{msg.reasoningChain.execute}</div>
 
                     <div className="text-[10px] text-gray-500 pt-1 border-t border-[#DFDBCF] flex justify-between">
                       <span>Idemp: {msg.idempotencyKey}</span>
