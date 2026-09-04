@@ -118,8 +118,9 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
         setOtpValue('984210');
       }, 700);
     } else if (selectedMethod === 'paypal') {
-      // Launch PayPal Express Checkout screen
+      // LANDS DIRECTLY ON REAL OFFICIAL PAYPAL ACCOUNT PORTAL
       setIsProcessing(true);
+      window.open('https://www.paypal.com/signin', '_blank');
       setTimeout(() => {
         setIsProcessing(false);
         setModalStep('paypal_express');
@@ -217,7 +218,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               {modalStep === 'otp'
                 ? '3D Secure OTP Authentication'
                 : modalStep === 'paypal_express'
-                ? 'PayPal Express Checkout'
+                ? 'PayPal Account Authorization'
                 : modalStep === 'success'
                 ? 'Payment Accepted'
                 : modalStep === 'failure_statement'
@@ -228,7 +229,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               {modalStep === 'otp'
                 ? 'Enter the 6-digit OTP sent by your bank to authorize payment.'
                 : modalStep === 'paypal_express'
-                ? 'Log in and authorize payment using your PayPal Balance or linked card.'
+                ? 'PayPal account portal launched in new tab. Click below to complete mandate.'
                 : modalStep === 'success'
                 ? 'Your transaction has been verified and captured successfully.'
                 : modalStep === 'failure_statement'
@@ -507,7 +508,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                       </div>
                       <div>
                         <h3 className="font-extrabold text-sm text-blue-950">PayPal International Express Gateway</h3>
-                        <p className="text-[11px] text-blue-800 font-mono">Connects directly to your PayPal account to pay</p>
+                        <p className="text-[11px] text-blue-800 font-mono">Connects directly to official PayPal Portal</p>
                       </div>
                     </div>
 
@@ -524,13 +525,21 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                         className="w-full px-4 py-2.5 rounded-xl border border-blue-300 bg-white focus:border-blue-700 text-xs font-mono font-bold text-[#111827] outline-none shadow-sm"
                       />
                       <p className="text-[10px] text-blue-900 font-mono">
-                        Clicking pay will launch PayPal Express Authentication for <strong className="text-black">{paypalEmail}</strong>.
+                        Clicking pay will launch <strong className="text-black">https://www.paypal.com/signin</strong> in a new tab for <strong className="text-black">{paypalEmail}</strong>.
                       </p>
                     </div>
 
                     <div className="p-3 rounded-xl bg-white border border-blue-200 flex items-center justify-between text-xs font-mono">
-                      <span className="text-gray-600 text-[11px]">PAYPAL MERCHANT VPA:</span>
-                      <span className="font-bold text-blue-900 text-[11px]">payments@rapierpay.paypal.me</span>
+                      <span className="text-gray-600 text-[11px]">PAYPAL LANDING PORTAL:</span>
+                      <a
+                        href="https://www.paypal.com/signin"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-blue-700 text-[11px] underline flex items-center gap-1 hover:text-blue-900"
+                      >
+                        <span>https://www.paypal.com/signin</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
                     </div>
                   </div>
 
@@ -542,12 +551,12 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                     {isProcessing ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Connecting to PayPal Express Portal...</span>
+                        <span>Opening PayPal Account Portal...</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Pay with PayPal (₹{totalAmount.toLocaleString('en-IN')})</span>
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Launch PayPal Portal & Pay (₹{totalAmount.toLocaleString('en-IN')})</span>
                       </>
                     )}
                   </button>
@@ -564,7 +573,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               <div className="flex items-center justify-between border-b border-blue-400/40 pb-4">
                 <div className="flex items-center gap-2">
                   <span className="font-black text-2xl font-sans tracking-tight text-white">PayPal</span>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-500/40 text-blue-100 font-bold">EXPRESS</span>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-500/40 text-blue-100 font-bold">LIVE PORTAL OPENED</span>
                 </div>
                 <span className="text-xs font-mono text-blue-200">{paypalEmail}</span>
               </div>
@@ -578,6 +587,19 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                   </div>
                   <span className="font-black text-emerald-300">VERIFIED</span>
                 </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-blue-900/60 border border-blue-400/40 text-xs font-mono flex items-center justify-between">
+                <span>PayPal Account Sign-In Link:</span>
+                <a
+                  href="https://www.paypal.com/signin"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold text-amber-300 underline flex items-center gap-1"
+                >
+                  <span>paypal.com/signin</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
               </div>
 
               <div className="flex justify-between items-center pt-2 font-mono text-xs border-t border-blue-400/40">
